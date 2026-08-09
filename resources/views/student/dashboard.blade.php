@@ -27,9 +27,9 @@
             </div>
 
             <div class="table-grid action-grid" style="margin-top: 24px;">
-                <form method="POST" action="/student/attend">@csrf<button type="submit" name="action" value="present" class="button button-present">Present</button></form>
-                <form method="POST" action="/student/attend">@csrf<button type="submit" name="action" value="late" class="button button-late">Late</button></form>
-                <form method="POST" action="/student/attend">@csrf<button type="submit" name="action" value="absent" class="button button-absent">Absent</button></form>
+                <form method="POST" action="/student/attend">@csrf<button type="submit" name="action" value="present" class="button button-present" {{ $isTodaySunday || (!empty($todayAttendance) && $todayAttendance['status'] === 'no_training') ? 'disabled' : '' }}>Present</button></form>
+                <form method="POST" action="/student/attend">@csrf<button type="submit" name="action" value="late" class="button button-late" {{ $isTodaySunday || (!empty($todayAttendance) && $todayAttendance['status'] === 'no_training') ? 'disabled' : '' }}>Late</button></form>
+                <form method="POST" action="/student/attend">@csrf<button type="submit" name="action" value="absent" class="button button-absent" {{ $isTodaySunday || (!empty($todayAttendance) && $todayAttendance['status'] === 'no_training') ? 'disabled' : '' }}>Absent</button></form>
                 <form method="GET" action="/student/excuse"><button type="submit" class="button button-excuse">Request Excuse</button></form>
             </div>
 

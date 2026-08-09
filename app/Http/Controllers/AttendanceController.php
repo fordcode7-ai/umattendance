@@ -210,6 +210,9 @@ class AttendanceController extends Controller
 
         $calendar = AttendanceStore::getMonthlyStatusCalendar($user['student_id'], $year, $month);
         $counts = AttendanceStore::getMonthCounts($user['student_id'], $year, $month);
+        $today = now()->format('Y-m-d');
+        $todayAttendance = AttendanceStore::getAttendanceForDate($user['student_id'], $today);
+        $isTodaySunday = date('w', strtotime($today)) === 0;
         $monthKey = sprintf('%d-%02d', $year, $month);
         $latestSchedule = AttendanceStore::getLatestSchedule($user['sport'], $monthKey);
         $latestAnnouncement = AttendanceStore::getLatestAnnouncement($user['sport'], $monthKey);
@@ -225,6 +228,8 @@ class AttendanceController extends Controller
             'latestSchedule' => $latestSchedule,
             'latestAnnouncement' => $latestAnnouncement,
             'unreadSchedule' => $unreadSchedule,
+            'todayAttendance' => $todayAttendance,
+            'isTodaySunday' => $isTodaySunday,
         ]);
     }
 
@@ -239,10 +244,19 @@ class AttendanceController extends Controller
             'action' => 'required|in:present,late,absent',
         ]);
 
+        $date = now()->format('Y-m-d');
+        if (now()->isSunday()) {
+            return back()->with('error', 'Sunday is a no-training day. Attendance cannot be submitted.');
+        }
+
         $action = $request->input('action');
         $time = now()->format('H:i');
-        $date = now()->format('Y-m-d');
         $sport = $user['sport'];
+        $existingRecord = AttendanceStore::getAttendanceForDate($user['student_id'], $date);
+
+        if (!empty($existingRecord) && $existingRecord['status'] === 'no_training') {
+            return back()->with('error', 'Attendance cannot be submitted on a no-training day.');
+        }
 
         if ($action === 'present') {
             $check = now()->greaterThanOrEqualTo(now()->copy()->setTime(8, 30));
