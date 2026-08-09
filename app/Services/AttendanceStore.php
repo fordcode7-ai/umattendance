@@ -617,13 +617,32 @@ class AttendanceStore
         return $items;
     }
 
+    public static function systemStartDate(): string
+    {
+        $envDate = env('ATTENDANCE_START_DATE');
+        if (!empty($envDate) && strtotime($envDate) !== false) {
+            return date('Y-m-d', strtotime($envDate));
+        }
+
+        return now()->addDay()->format('Y-m-d');
+    }
+
+    public static function isBeforeStartDate(string $date): bool
+    {
+        return strtotime($date) < strtotime(self::systemStartDate());
+    }
+
     public static function getMonthCounts(string $studentId, int $year, int $month): array
     {
         $user = self::findUserByStudentId($studentId);
         $sport = $user['sport'] ?? null;
         $attendance = self::getMonthlyAttendance($studentId, $year, $month);
+        $startDate = self::systemStartDate();
         $counts = ['present' => 0, 'late' => 0, 'absent' => 0, 'excuse' => 0, 'special_training' => 0, 'no_training' => 0];
-        foreach ($attendance as $entry) {
+        foreach ($attendance as $date => $entry) {
+            if (strtotime($date) < strtotime($startDate)) {
+                continue;
+            }
             $status = $entry['status'] ?? 'absent';
             if (isset($counts[$status])) {
                 $counts[$status]++;
@@ -636,12 +655,15 @@ class AttendanceStore
                 if (strpos($date, sprintf('%04d-%02d', $year, $month)) !== 0) {
                     continue;
                 }
-                    if (!isset($attendance[$date])) {
-                        // Only count scheduled absences for dates that are today or in the past
-                        if (strtotime($date) <= time()) {
-                            $counts['absent']++;
-                        }
+                if (strtotime($date) < strtotime($startDate)) {
+                    continue;
+                }
+                if (!isset($attendance[$date])) {
+                    // Only count scheduled absences for dates that are today or in the past
+                    if (strtotime($date) <= time()) {
+                        $counts['absent']++;
                     }
+                }
             }
         }
 
@@ -804,11 +826,17 @@ class AttendanceStore
         $monthDays = date('t', strtotime("{$year}-{$month}-01"));
         $sport = self::findUserByStudentId($studentId)['sport'] ?? null;
         $schedule = $sport ? self::getSchedules($sport) : [];
+        $startDate = self::systemStartDate();
         for ($day = 1; $day <= $monthDays; $day++) {
             $date = sprintf('%04d-%02d-%02d', $year, $month, $day);
+            if (strtotime($date) < strtotime($startDate)) {
+                $calendar[$date] = null;
+                continue;
+            }
+
             $dayOfWeek = date('w', strtotime($date)); // 0=Sunday, 6=Saturday
             $entry = $attendance[$date] ?? null;
-            
+
             // Auto-mark Sundays (0) as no_training if no record exists
             if (!$entry && $dayOfWeek == 0) {
                 $entry = ['status' => 'no_training', 'time' => '--', 'note' => 'No training day (Sunday)'];
