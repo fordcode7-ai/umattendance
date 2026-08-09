@@ -28,15 +28,7 @@
             </div>
         </div>
 
-        @if($pendingPublish)
-            <div class="page-notice page-notice-info" style="margin-top: 18px;">
-                <span class="page-notice-dot"></span>
-                <div>
-                    <strong>Draft saved for {{ $monthLabel }}</strong>
-                    <p>Press "Post Schedule to Students" below to notify your athletes about the latest schedule changes.</p>
-                </div>
-            </div>
-        @elseif(!empty($schedulePublishedAt))
+        @if(!empty($schedulePublishedAt))
             <div class="page-notice page-notice-success" style="margin-top: 18px;">
                 <span class="page-notice-dot"></span>
                 <div>

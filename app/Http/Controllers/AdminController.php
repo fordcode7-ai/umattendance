@@ -197,9 +197,10 @@ class AdminController extends Controller
         $request->validate([
             'date' => 'required|date',
             'status' => 'required|in:present,late,absent,excuse',
+            'time' => 'required|date_format:H:i',
         ]);
 
-        AttendanceStore::updateAttendance($studentId, $request->input('date'), $request->input('status'));
+        AttendanceStore::updateAttendance($studentId, $request->input('date'), $request->input('status'), $request->input('time'));
         return back()->with('success', 'Student attendance updated.');
     }
 

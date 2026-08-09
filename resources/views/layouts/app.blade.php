@@ -2091,28 +2091,61 @@
         .field-row {
             grid-template-columns: 1fr !important;
             gap: 10px;
-            }
+        }
 
-            .field-group .form-control,
-            .field-group .form-select {
-                width: 100%;
-                min-width: 0;
-            }
+        .field-group .form-control,
+        .field-group .form-select {
+            width: 100%;
+            min-width: 0;
+        }
 
-            .action-row {
-                display: flex;
-                flex-direction: column-reverse;
-                gap: 10px;
-            }
+        .action-row {
+            display: flex;
+            flex-direction: column-reverse;
+            gap: 10px;
+            min-width: 0;
+            width: 100%;
+        }
 
-            .action-row .button {
-                width: 100%;
-            }
+        .action-row .button {
+            width: 100%;
+        }
 
-            .month-grid {
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-                gap: 10px;
-            }
+        .calendar-cell .schedule-actions {
+            width: 100%;
+            min-width: 0;
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .calendar-cell .schedule-actions details {
+            width: 100%;
+            min-width: 0;
+        }
+
+        .calendar-cell .schedule-actions details summary {
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .calendar-cell .schedule-actions .form-panel {
+            width: 100%;
+            min-width: 0;
+            overflow: hidden;
+        }
+
+        .calendar-cell .schedule-actions .field-row {
+            grid-template-columns: 1fr !important;
+        }
+
+        .calendar-cell .schedule-actions .field-group {
+            min-width: 0;
+        }
+
+        .month-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+        }
 
             .month-cell {
                 padding: 12px;

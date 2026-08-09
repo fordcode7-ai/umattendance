@@ -145,7 +145,7 @@
                             Change Photo / Choose File
                         </label>
                         <input type="file" id="avatar" name="avatar" accept="image/*" class="form-file" style="display:none;" />
-                        <p style="margin: 0; color: var(--um-gray); font-size: 0.95rem; text-align: center;">Use a clear photo for your coach profile.</p>
+                        <p style="margin: 0; color: var(--um-gray); font-size: 0.95rem; text-align: center;">Use a clear photo for your profile.</p>
                     </div>
 
                     <div class="profile-meta-card">

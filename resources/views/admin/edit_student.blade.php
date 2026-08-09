@@ -24,6 +24,13 @@
                     </select>
                 </div>
             </div>
+            <div class="field-row">
+                <div class="field-group">
+                    <label for="time">Time</label>
+                    <input id="time" name="time" type="time" value="{{ now()->format('H:i') }}" required />
+                    <p class="form-help">Enter the attendance time for the selected date.</p>
+                </div>
+            </div>
             <button type="submit" class="button button-primary">Update Attendance</button>
         </form>
     </div>

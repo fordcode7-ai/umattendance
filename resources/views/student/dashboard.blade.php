@@ -111,13 +111,20 @@
                 <div class="form-card">
                     <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:18px;">
                         <h4 style="margin:0;">Upcoming Training</h4>
-                        @if(
-                            
-                            \App\Services\AttendanceStore::hasUnreadScheduleNotifications($user['student_id'], $user['sport'])
-                        )
+                        @if(!empty($unreadSchedule))
                             <span style="display:inline-flex; align-items:center; padding:6px 10px; border-radius:999px; background:rgba(212,175,55,0.14); color:#f4c542; font-size:0.82rem; font-weight:700;">New Schedule Posted</span>
                         @endif
                     </div>
+
+                    @if(!empty($unreadSchedule))
+                        <x-notification-card
+                            title="New Schedule Posted"
+                            description="Your coach posted a new training schedule for your team. Acknowledge it to keep the update clear."
+                            actionUrl="/student/notifications/acknowledge/schedule"
+                            actionLabel="Acknowledge"
+                        />
+                    @endif
+
                     @if(!empty($latestSchedule))
                         <div style="padding: 18px; border-radius: 22px; background: rgba(255,255,255,0.08); border: 1px solid rgba(212,175,55,0.12);">
                             <strong>{{ date('F j, Y', strtotime($latestSchedule['date'])) }}</strong>

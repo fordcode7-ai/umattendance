@@ -213,6 +213,7 @@ class AttendanceController extends Controller
         $monthKey = sprintf('%d-%02d', $year, $month);
         $latestSchedule = AttendanceStore::getLatestSchedule($user['sport'], $monthKey);
         $latestAnnouncement = AttendanceStore::getLatestAnnouncement($user['sport'], $monthKey);
+        $unreadSchedule = AttendanceStore::hasUnreadScheduleNotifications($user['student_id'], $user['sport']);
 
         return view('student.dashboard', [
             'user' => $user,
@@ -223,6 +224,7 @@ class AttendanceController extends Controller
             'monthName' => date('F', strtotime("{$year}-{$month}-01")),
             'latestSchedule' => $latestSchedule,
             'latestAnnouncement' => $latestAnnouncement,
+            'unreadSchedule' => $unreadSchedule,
         ]);
     }
 

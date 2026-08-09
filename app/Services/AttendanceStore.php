@@ -1480,10 +1480,10 @@ class AttendanceStore
         self::save($data);
     }
 
-    public static function updateAttendance(string $studentId, string $date, string $status): void
+    public static function updateAttendance(string $studentId, string $date, string $status, string $time = null): void
     {
         $existing = self::getAttendanceForDate($studentId, $date);
-        $time = $existing['time'] ?? now()->format('H:i');
+        $time = $time ?? $existing['time'] ?? now()->format('H:i');
         $sport = self::findUserByStudentId($studentId)['sport'] ?? 'taekwondo';
         self::addAttendance($studentId, $date, $status, $time, $sport, 'Updated by admin');
     }
