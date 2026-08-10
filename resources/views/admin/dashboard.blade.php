@@ -56,45 +56,108 @@
             <button class="button button-primary" type="submit" style="min-width: 84px; padding: 12px 16px;">Find</button>
         </form>
 
-        <div class="roster-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; margin-top: 18px;">
-            @foreach($students as $student)
-            @php
-                $colorHex = $student['color'] === 'red' ? '#d43945' : ($student['color'] === 'yellow' ? '#f4b400' : '#18a062');
-                [$r, $g, $b] = sscanf($colorHex, "#%02x%02x%02x");
-                $glow = "0 6px 18px rgba($r,$g,$b,0.06)";
-                $cardBg = 'rgba(255,255,255,0.03)';
-                $borderColor = 'rgba(255,255,255,0.06)';
-            @endphp
-            <div class="student-card" style="border-radius: 22px; padding: 16px; background: {{ $cardBg }}; border: 1px solid {{ $borderColor }}; box-shadow: 0 2px 8px rgba(0,0,0,0.12), {{ $glow }}; border-left: 6px solid {{ $colorHex }};">
-                @if(!empty($student['avatar']))
-                    <img src="{{ $student['avatar'] }}" alt="{{ $student['first_name'] }} {{ $student['last_name'] }}" class="avatar avatar-image" style="width:52px;height:52px;object-fit:cover;border-radius:12px;" />
-                @else
-                    <div class="avatar" style="width:52px;height:52px;border-radius:12px;display:inline-flex;align-items:center;justify-content:center;font-weight:700;background:rgba(255,255,255,0.08);color:#fff;">{{ strtoupper(substr($student['first_name'],0,1)) }}{{ strtoupper(substr($student['last_name'],0,1)) }}</div>
-                @endif
-                <div class="student-info" style="min-width:0;margin-left:12px;">
-                    <h3 style="margin:0 0 6px;font-size:1rem;line-height:1.2;">{{ $student['first_name'] }} {{ $student['last_name'] }}</h3>
-                    <p style="margin:0;color:rgba(247,245,242,0.72);font-size:0.88rem;">{{ $student['student_id'] }} · {{ ucfirst($student['sport']) }} · {{ $student['year_level'] }} · {{ $student['course'] }}</p>
+        <div style="display:grid;grid-template-columns:1fr;gap:28px;margin-top:18px;">
+            <section>
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+                    <h3 style="margin:0;color:#fff;font-size:1.1rem;">Taekwondo Students</h3>
+                    <span style="padding:4px 10px;border-radius:999px;background:rgba(244,180,0,0.12);color:#f4b400;font-size:0.82rem;">Taekwondo</span>
                 </div>
-                <div class="stat-grid" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:14px;">
-                    <div style="padding:14px;border-radius:18px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);">
-                        <span style="display:block;font-size:0.78rem;color:rgba(247,245,242,0.68);margin-bottom:6px;">Present</span>
-                        <strong style="font-size:1.2rem;">{{ $student['counts']['present'] }}</strong>
+                <div class="roster-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; margin-top: 14px;">
+                    @forelse($taekwondoStudents as $student)
+                    @php
+                        $colorHex = $student['color'] === 'red' ? '#d43945' : ($student['color'] === 'yellow' ? '#f4b400' : '#18a062');
+                        [$r, $g, $b] = sscanf($colorHex, "#%02x%02x%02x");
+                        $glow = "0 6px 18px rgba($r,$g,$b,0.06)";
+                        $cardBg = 'rgba(255,255,255,0.03)';
+                        $borderColor = 'rgba(255,255,255,0.06)';
+                    @endphp
+                    <div class="student-card" style="border-radius: 22px; padding: 16px; background: {{ $cardBg }}; border: 1px solid {{ $borderColor }}; box-shadow: 0 2px 8px rgba(0,0,0,0.12), {{ $glow }}; border-left: 6px solid {{ $colorHex }};">
+                        @if(!empty($student['avatar']))
+                            <img src="{{ $student['avatar'] }}" alt="{{ $student['first_name'] }} {{ $student['last_name'] }}" class="avatar avatar-image" style="width:52px;height:52px;object-fit:cover;border-radius:12px;" />
+                        @else
+                            <div class="avatar" style="width:52px;height:52px;border-radius:12px;display:inline-flex;align-items:center;justify-content:center;font-weight:700;background:rgba(255,255,255,0.08);color:#fff;">{{ strtoupper(substr($student['first_name'],0,1)) }}{{ strtoupper(substr($student['last_name'],0,1)) }}</div>
+                        @endif
+                        <div class="student-info" style="min-width:0;margin-left:12px;">
+                            <h3 style="margin:0 0 6px;font-size:1rem;line-height:1.2;">{{ $student['first_name'] }} {{ $student['last_name'] }}</h3>
+                            <p style="margin:0;color:rgba(247,245,242,0.72);font-size:0.88rem;">{{ $student['student_id'] }} · {{ ucfirst($student['sport']) }} · {{ $student['year_level'] }} · {{ $student['course'] }}</p>
+                        </div>
+                        <div class="stat-grid" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:14px;">
+                            <div style="padding:14px;border-radius:18px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);">
+                                <span style="display:block;font-size:0.78rem;color:rgba(247,245,242,0.68);margin-bottom:6px;">Present</span>
+                                <strong style="font-size:1.2rem;">{{ $student['counts']['present'] }}</strong>
+                            </div>
+                            <div style="padding:14px;border-radius:18px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);">
+                                <span style="display:block;font-size:0.78rem;color:rgba(247,245,242,0.68);margin-bottom:6px;">Late</span>
+                                <strong style="font-size:1.2rem;">{{ $student['counts']['late'] }}</strong>
+                            </div>
+                            <div style="padding:14px;border-radius:18px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);">
+                                <span style="display:block;font-size:0.78rem;color:rgba(247,245,242,0.68);margin-bottom:6px;">Absent</span>
+                                <strong style="font-size:1.2rem;">{{ $student['counts']['absent'] }}</strong>
+                            </div>
+                            <div style="padding:14px;border-radius:18px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);">
+                                <span style="display:block;font-size:0.78rem;color:rgba(247,245,242,0.68);margin-bottom:6px;">Excuse</span>
+                                <strong style="font-size:1.2rem;">{{ $student['counts']['excuse'] }}</strong>
+                            </div>
+                        </div>
                     </div>
-                    <div style="padding:14px;border-radius:18px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);">
-                        <span style="display:block;font-size:0.78rem;color:rgba(247,245,242,0.68);margin-bottom:6px;">Late</span>
-                        <strong style="font-size:1.2rem;">{{ $student['counts']['late'] }}</strong>
+                    @empty
+                    <div style="grid-column: 1 / -1; padding: 18px 16px; border-radius: 20px; background: rgba(255,255,255,0.05); color: rgba(247,245,242,0.82);">
+                        No Taekwondo students found for this month.
                     </div>
-                    <div style="padding:14px;border-radius:18px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);">
-                        <span style="display:block;font-size:0.78rem;color:rgba(247,245,242,0.68);margin-bottom:6px;">Absent</span>
-                        <strong style="font-size:1.2rem;">{{ $student['counts']['absent'] }}</strong>
-                    </div>
-                    <div style="padding:14px;border-radius:18px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);">
-                        <span style="display:block;font-size:0.78rem;color:rgba(247,245,242,0.68);margin-bottom:6px;">Excuse</span>
-                        <strong style="font-size:1.2rem;">{{ $student['counts']['excuse'] }}</strong>
-                    </div>
+                    @endforelse
                 </div>
-            </div>
-            @endforeach
+            </section>
+
+            <section>
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+                    <h3 style="margin:0;color:#fff;font-size:1.1rem;">Karatedo Students</h3>
+                    <span style="padding:4px 10px;border-radius:999px;background:rgba(24,160,98,0.12);color:#18a062;font-size:0.82rem;">Karatedo</span>
+                </div>
+                <div class="roster-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; margin-top: 14px;">
+                    @forelse($karatedoStudents as $student)
+                    @php
+                        $colorHex = $student['color'] === 'red' ? '#d43945' : ($student['color'] === 'yellow' ? '#f4b400' : '#18a062');
+                        [$r, $g, $b] = sscanf($colorHex, "#%02x%02x%02x");
+                        $glow = "0 6px 18px rgba($r,$g,$b,0.06)";
+                        $cardBg = 'rgba(255,255,255,0.03)';
+                        $borderColor = 'rgba(255,255,255,0.06)';
+                    @endphp
+                    <div class="student-card" style="border-radius: 22px; padding: 16px; background: {{ $cardBg }}; border: 1px solid {{ $borderColor }}; box-shadow: 0 2px 8px rgba(0,0,0,0.12), {{ $glow }}; border-left: 6px solid {{ $colorHex }};">
+                        @if(!empty($student['avatar']))
+                            <img src="{{ $student['avatar'] }}" alt="{{ $student['first_name'] }} {{ $student['last_name'] }}" class="avatar avatar-image" style="width:52px;height:52px;object-fit:cover;border-radius:12px;" />
+                        @else
+                            <div class="avatar" style="width:52px;height:52px;border-radius:12px;display:inline-flex;align-items:center;justify-content:center;font-weight:700;background:rgba(255,255,255,0.08);color:#fff;">{{ strtoupper(substr($student['first_name'],0,1)) }}{{ strtoupper(substr($student['last_name'],0,1)) }}</div>
+                        @endif
+                        <div class="student-info" style="min-width:0;margin-left:12px;">
+                            <h3 style="margin:0 0 6px;font-size:1rem;line-height:1.2;">{{ $student['first_name'] }} {{ $student['last_name'] }}</h3>
+                            <p style="margin:0;color:rgba(247,245,242,0.72);font-size:0.88rem;">{{ $student['student_id'] }} · {{ ucfirst($student['sport']) }} · {{ $student['year_level'] }} · {{ $student['course'] }}</p>
+                        </div>
+                        <div class="stat-grid" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:14px;">
+                            <div style="padding:14px;border-radius:18px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);">
+                                <span style="display:block;font-size:0.78rem;color:rgba(247,245,242,0.68);margin-bottom:6px;">Present</span>
+                                <strong style="font-size:1.2rem;">{{ $student['counts']['present'] }}</strong>
+                            </div>
+                            <div style="padding:14px;border-radius:18px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);">
+                                <span style="display:block;font-size:0.78rem;color:rgba(247,245,242,0.68);margin-bottom:6px;">Late</span>
+                                <strong style="font-size:1.2rem;">{{ $student['counts']['late'] }}</strong>
+                            </div>
+                            <div style="padding:14px;border-radius:18px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);">
+                                <span style="display:block;font-size:0.78rem;color:rgba(247,245,242,0.68);margin-bottom:6px;">Absent</span>
+                                <strong style="font-size:1.2rem;">{{ $student['counts']['absent'] }}</strong>
+                            </div>
+                            <div style="padding:14px;border-radius:18px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);">
+                                <span style="display:block;font-size:0.78rem;color:rgba(247,245,242,0.68);margin-bottom:6px;">Excuse</span>
+                                <strong style="font-size:1.2rem;">{{ $student['counts']['excuse'] }}</strong>
+                            </div>
+                        </div>
+                    </div>
+                    @empty
+                    <div style="grid-column: 1 / -1; padding: 18px 16px; border-radius: 20px; background: rgba(255,255,255,0.05); color: rgba(247,245,242,0.82);">
+                        No Karatedo students found for this month.
+                    </div>
+                    @endforelse
+                </div>
+            </section>
         </div>
     </div>
 </div>

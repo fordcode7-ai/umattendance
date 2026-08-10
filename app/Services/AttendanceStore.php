@@ -858,8 +858,12 @@ class AttendanceStore
             $list[] = array_merge($student, ['counts' => $counts, 'color' => $color]);
         }
         usort($list, function ($a, $b) {
-            $score = ['red' => 2, 'yellow' => 1, 'green' => 0];
-            return $score[$b['color']] <=> $score[$a['color']];
+            $aLast = strtolower($a['last_name'] ?? '');
+            $bLast = strtolower($b['last_name'] ?? '');
+            if ($aLast !== $bLast) {
+                return $aLast <=> $bLast;
+            }
+            return strtolower($a['first_name'] ?? '') <=> strtolower($b['first_name'] ?? '');
         });
         return $list;
     }

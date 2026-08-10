@@ -25,18 +25,22 @@ class AdminController extends Controller
 
         $year = (int) $request->query('year', now()->year);
         $month = (int) $request->query('month', now()->month);
-        $students = AttendanceStore::allStudentsStatus('taekwondo', $year, $month);
-        $students = array_merge($students, AttendanceStore::allStudentsStatus('karatedo', $year, $month));
+        $taekwondoStudents = AttendanceStore::allStudentsStatus('taekwondo', $year, $month);
+        $karatedoStudents = AttendanceStore::allStudentsStatus('karatedo', $year, $month);
         $search = $request->query('search', '');
         if ($search) {
-            $students = array_filter($students, function ($student) use ($search) {
+            $taekwondoStudents = array_filter($taekwondoStudents, function ($student) use ($search) {
+                return stripos($student['first_name'] . ' ' . $student['last_name'], $search) !== false;
+            });
+            $karatedoStudents = array_filter($karatedoStudents, function ($student) use ($search) {
                 return stripos($student['first_name'] . ' ' . $student['last_name'], $search) !== false;
             });
         }
 
         return view('admin.dashboard', [
             'user' => $user,
-            'students' => $students,
+            'taekwondoStudents' => $taekwondoStudents,
+            'karatedoStudents' => $karatedoStudents,
             'year' => $year,
             'month' => $month,
             'search' => $search,
@@ -473,6 +477,15 @@ class AdminController extends Controller
         }
 
         $students = AttendanceStore::allStudents();
+        usort($students, function ($a, $b) {
+            $aLast = strtolower($a['last_name'] ?? '');
+            $bLast = strtolower($b['last_name'] ?? '');
+            if ($aLast !== $bLast) {
+                return $aLast <=> $bLast;
+            }
+            return strtolower($a['first_name'] ?? '') <=> strtolower($b['first_name'] ?? '');
+        });
+
         $search = $request->query('search', '');
         if ($search) {
             $students = array_filter($students, function ($student) use ($search) {

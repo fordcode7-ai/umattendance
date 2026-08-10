@@ -111,24 +111,37 @@
                                 <summary class="button button-present" style="cursor: pointer;">Edit</summary>
                                 <form method="POST" action="/coach/schedule/{{ $sport }}/{{ $date }}/update" class="form-panel" style="margin-top: 12px;">
                                     @csrf
+                                    <input type="hidden" name="month" value="{{ $monthKey }}" />
+                                    @php
+                                        $currentType = ($item['time'] ?? '') === 'No Training' ? 'no_training' : 'training';
+                                    @endphp
                                     <div class="field-row">
                                         <div class="field-group">
                                             <label for="date_{{ $date }}">Date</label>
                                             <input id="date_{{ $date }}" type="date" name="date" value="{{ $date }}" required class="form-control" />
                                         </div>
                                         <div class="field-group">
-                                            <label for="time_{{ $date }}">Time</label>
-                                            <input id="time_{{ $date }}" type="text" name="time" value="{{ $item['time'] ?? '' }}" required class="form-control" />
+                                            <label for="session_type_{{ $date }}">Session Type</label>
+                                            <select id="session_type_{{ $date }}" name="session_type" required class="form-control form-select">
+                                                <option value="training" {{ $currentType === 'training' ? 'selected' : '' }}>Training</option>
+                                                <option value="no_training" {{ $currentType === 'no_training' ? 'selected' : '' }}>No Training</option>
+                                            </select>
                                         </div>
                                     </div>
-                                    <div class="field-group">
-                                        <label for="venue_{{ $date }}">Venue</label>
-                                        <select id="venue_{{ $date }}" name="venue" required class="form-control form-select">
-                                            <option value="" disabled>Select a venue</option>
-                                            @foreach($venueOptions as $venueOption)
-                                                <option value="{{ $venueOption }}" {{ ($item['venue'] ?? '') === $venueOption ? 'selected' : '' }}>{{ $venueOption }}</option>
-                                            @endforeach
-                                        </select>
+                                    <div class="field-row">
+                                        <div class="field-group">
+                                            <label for="time_{{ $date }}">Time</label>
+                                            <input id="time_{{ $date }}" type="text" name="time" value="{{ $currentType === 'training' ? $item['time'] : '' }}" class="form-control" />
+                                        </div>
+                                        <div class="field-group">
+                                            <label for="venue_{{ $date }}">Venue</label>
+                                            <select id="venue_{{ $date }}" name="venue" class="form-control form-select">
+                                                <option value="" disabled>Select a venue</option>
+                                                @foreach($venueOptions as $venueOption)
+                                                    <option value="{{ $venueOption }}" {{ ($item['venue'] ?? '') === $venueOption ? 'selected' : '' }}>{{ $venueOption }}</option>
+                                                @endforeach
+                                            </select>
+                                        </div>
                                     </div>
                                     <div class="action-row" style="margin-top:8px; display:flex; gap:8px; justify-content:flex-end;">
                                         <button type="submit" class="button button-primary">Save</button>
