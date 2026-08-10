@@ -18,12 +18,10 @@
                 <label for="identifier">Email or Student ID</label>
                 <input id="identifier" type="text" name="identifier" value="{{ old('identifier') }}" placeholder="Enter your Student ID or Email" required class="form-control" />
             </div>
-            <div class="field-group password-wrapper">
+            <div class="field-group password-wrapper" style="position:relative;">
                 <label for="password">Password</label>
-                <div style="position:relative;">
-                    <input id="password" type="password" name="password" placeholder="Enter your password" required class="form-control" />
-                    <button type="button" class="button password-toggle" aria-label="Show password" style="position:absolute; right:10px; top:50%; transform:translateY(-50%);"> <i class="bi bi-eye"></i></button>
-                </div>
+                <input id="password" type="password" name="password" placeholder="Enter your password" required class="form-control" />
+                <button type="button" class="button password-toggle" aria-label="Show password"><i class="bi bi-eye"></i></button>
             </div>
             <div class="hero-actions public-login-actions">
                 <button type="submit" class="button button-primary button-large">Login</button>

@@ -973,6 +973,11 @@ class AttendanceStore
                 return ['sport' => $otherSport, 'entry' => $entry];
             }
 
+            $otherTime = trim((string)($entry['time'] ?? ''));
+            if (strcasecmp($otherTime, 'No Training') === 0 || strcasecmp($otherTime, 'Rest Day') === 0) {
+                continue;
+            }
+
             $rangeA = self::parseTimeRange($date, $time);
             $rangeB = self::parseTimeRange($date, $entry['time']);
 
