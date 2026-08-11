@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
@@ -15,6 +16,11 @@ class AttendanceStore
     protected static function dataPath(): string
     {
         return storage_path('app/attendance_data.json');
+    }
+
+    protected static function appTimezone(): string
+    {
+        return config('app.timezone') ?: date_default_timezone_get();
     }
 
     protected static function defaultSystemData(): array
@@ -83,24 +89,32 @@ class AttendanceStore
 
     protected static function databaseReady(): bool
     {
-        return Schema::hasTable('attendance_users')
-            && Schema::hasTable('attendance_records')
-            && Schema::hasTable('attendance_excuses')
-            && Schema::hasTable('attendance_schedules')
-            && Schema::hasTable('attendance_announcements');
+        try {
+            return Schema::hasTable('attendance_users')
+                && Schema::hasTable('attendance_records')
+                && Schema::hasTable('attendance_excuses')
+                && Schema::hasTable('attendance_schedules')
+                && Schema::hasTable('attendance_announcements');
+        } catch (\Exception $e) {
+            return false;
+        }
     }
 
     protected static function databaseHasData(): bool
     {
-        if (!self::databaseReady()) {
+        try {
+            if (!self::databaseReady()) {
+                return false;
+            }
+
+            return DB::table('attendance_users')->exists()
+                || DB::table('attendance_records')->exists()
+                || DB::table('attendance_excuses')->exists()
+                || DB::table('attendance_schedules')->exists()
+                || DB::table('attendance_announcements')->exists();
+        } catch (\Exception $e) {
             return false;
         }
-
-        return DB::table('attendance_users')->exists()
-            || DB::table('attendance_records')->exists()
-            || DB::table('attendance_excuses')->exists()
-            || DB::table('attendance_schedules')->exists()
-            || DB::table('attendance_announcements')->exists();
     }
 
     protected static function legacyDataFromDatabase(): array
@@ -619,28 +633,39 @@ class AttendanceStore
 
     public static function systemStartDate(): string
     {
+        $timezone = self::appTimezone();
         $envDate = env('ATTENDANCE_START_DATE');
-        if (!empty($envDate) && strtotime($envDate) !== false) {
-            return date('Y-m-d', strtotime($envDate));
+        if (!empty($envDate)) {
+            try {
+                return Carbon::parse($envDate, $timezone)->format('Y-m-d');
+            } catch (\Exception $e) {
+                // Ignore invalid env date and fall back to today.
+            }
         }
 
-        return now()->addDay()->format('Y-m-d');
+        return Carbon::today($timezone)->format('Y-m-d');
     }
 
     public static function isBeforeStartDate(string $date): bool
     {
-        return strtotime($date) < strtotime(self::systemStartDate());
+        $timezone = self::appTimezone();
+        $entryDate = Carbon::parse($date, $timezone)->startOfDay();
+        $startDate = Carbon::parse(self::systemStartDate(), $timezone)->startOfDay();
+        return $entryDate->lt($startDate);
     }
 
     public static function getMonthCounts(string $studentId, int $year, int $month): array
     {
+        $timezone = self::appTimezone();
         $user = self::findUserByStudentId($studentId);
         $sport = $user['sport'] ?? null;
         $attendance = self::getMonthlyAttendance($studentId, $year, $month);
-        $startDate = self::systemStartDate();
+        $startDate = Carbon::parse(self::systemStartDate(), $timezone)->startOfDay();
         $counts = ['present' => 0, 'late' => 0, 'absent' => 0, 'excuse' => 0, 'special_training' => 0, 'no_training' => 0];
+
         foreach ($attendance as $date => $entry) {
-            if (strtotime($date) < strtotime($startDate)) {
+            $entryDate = Carbon::parse($date, $timezone)->startOfDay();
+            if ($entryDate->lt($startDate)) {
                 continue;
             }
             $status = $entry['status'] ?? 'absent';
@@ -650,19 +675,14 @@ class AttendanceStore
         }
 
         if ($sport) {
-            $schedule = self::getSchedules($sport);
+            $schedule = self::getSchedules($sport, sprintf('%04d-%02d', $year, $month));
             foreach ($schedule as $date => $entry) {
-                if (strpos($date, sprintf('%04d-%02d', $year, $month)) !== 0) {
+                $scheduleDate = Carbon::parse($date, $timezone)->startOfDay();
+                if ($scheduleDate->lt($startDate)) {
                     continue;
                 }
-                if (strtotime($date) < strtotime($startDate)) {
-                    continue;
-                }
-                if (!isset($attendance[$date])) {
-                    // Only count scheduled absences for dates that are today or in the past
-                    if (strtotime($date) <= time()) {
-                        $counts['absent']++;
-                    }
+                if (!isset($attendance[$date]) && self::hasScheduleElapsed($date, $entry['time'])) {
+                    $counts['absent']++;
                 }
             }
         }
@@ -778,7 +798,17 @@ class AttendanceStore
 
     public static function autoMarkAbsentIfNeeded(string $studentId, string $sport, ?string $date = null): bool
     {
-        $date = $date ?? now()->format('Y-m-d');
+        $timezone = self::appTimezone();
+        $date = $date ?? Carbon::today($timezone)->format('Y-m-d');
+        if (self::isBeforeStartDate($date)) {
+            return false;
+        }
+
+        $dayOfWeek = Carbon::parse($date, $timezone)->dayOfWeek;
+        if ($dayOfWeek === 0) {
+            return false;
+        }
+
         $existing = self::getAttendanceForDate($studentId, $date);
         if ($existing) {
             return false;
@@ -790,7 +820,17 @@ class AttendanceStore
 
     public static function autoMarkAbsentForMissingDailyCheckIns(?string $date = null): int
     {
-        $date = $date ?? now()->format('Y-m-d');
+        $timezone = self::appTimezone();
+        $date = $date ?? Carbon::today($timezone)->format('Y-m-d');
+        if (self::isBeforeStartDate($date)) {
+            return 0;
+        }
+
+        $dayOfWeek = Carbon::parse($date, $timezone)->dayOfWeek;
+        if ($dayOfWeek === 0) {
+            return 0;
+        }
+
         $students = self::allStudents();
         $count = 0;
 
@@ -821,26 +861,29 @@ class AttendanceStore
 
     public static function getMonthlyStatusCalendar(string $studentId, int $year, int $month): array
     {
+        $timezone = self::appTimezone();
         $attendance = self::getMonthlyAttendance($studentId, $year, $month);
         $calendar = [];
-        $monthDays = date('t', strtotime("{$year}-{$month}-01"));
+        $monthDays = Carbon::parse("{$year}-{$month}-01", $timezone)->daysInMonth;
         $sport = self::findUserByStudentId($studentId)['sport'] ?? null;
-        $schedule = $sport ? self::getSchedules($sport) : [];
-        $startDate = self::systemStartDate();
+        $schedule = $sport ? self::getSchedules($sport, sprintf('%04d-%02d', $year, $month)) : [];
+        $startDate = Carbon::parse(self::systemStartDate(), $timezone)->startOfDay();
+
         for ($day = 1; $day <= $monthDays; $day++) {
             $date = sprintf('%04d-%02d-%02d', $year, $month, $day);
-            if (strtotime($date) < strtotime($startDate)) {
+            $currentDate = Carbon::parse($date, $timezone)->startOfDay();
+            if ($currentDate->lt($startDate)) {
                 $calendar[$date] = null;
                 continue;
             }
 
-            $dayOfWeek = date('w', strtotime($date)); // 0=Sunday, 6=Saturday
+            $dayOfWeek = $currentDate->dayOfWeek; // 0=Sunday, 6=Saturday
             $entry = $attendance[$date] ?? null;
 
             // Auto-mark Sundays (0) as no_training if no record exists
             if (!$entry && $dayOfWeek == 0) {
                 $entry = ['status' => 'no_training', 'time' => '--', 'note' => 'No training day (Sunday)'];
-            } elseif (!$entry && isset($schedule[$date]) && strtotime($date) <= time()) {
+            } elseif (!$entry && isset($schedule[$date]) && self::hasScheduleElapsed($date, $schedule[$date]['time'])) {
                 $entry = ['status' => 'absent', 'time' => '--', 'note' => 'No recorded check-in.'];
             }
             $calendar[$date] = $entry;
@@ -848,7 +891,7 @@ class AttendanceStore
         return $calendar;
     }
 
-    public static function allStudentsStatus(string $sport, int $year, int $month): array
+    public static function allStudentsStatus(?string $sport, int $year, int $month): array
     {
         $students = self::allStudents($sport);
         $list = [];
@@ -882,15 +925,16 @@ class AttendanceStore
     public static function getSchedules(string $sport, ?string $month = null): array
     {
         $data = self::all();
-        $monthKey = $month ?: now()->format('Y-m');
+        $timezone = self::appTimezone();
+        $monthKey = $month ?: Carbon::now($timezone)->format('Y-m');
         $items = $data['schedules'][$sport] ?? [];
 
-        return array_filter($items, function ($item, $date) use ($monthKey) {
+        return array_filter($items, function ($item, $date) use ($monthKey, $timezone) {
             if (!is_string($date) || empty($date)) {
                 return false;
             }
 
-            return date('Y-m', strtotime($date)) === $monthKey;
+            return Carbon::parse($date, $timezone)->format('Y-m') === $monthKey;
         }, ARRAY_FILTER_USE_BOTH);
     }
 
@@ -949,47 +993,8 @@ class AttendanceStore
      */
     public static function findScheduleConflict(string $sport, string $date, ?string $time = null, ?string $venue = null): ?array
     {
-        $data = self::all();
-        foreach ($data['schedules'] as $otherSport => $items) {
-            if ($otherSport === $sport) {
-                continue;
-            }
-            if (!is_array($items)) {
-                continue;
-            }
-            if (!isset($items[$date])) {
-                continue;
-            }
-            $entry = $items[$date];
-            $otherVenue = trim((string)($entry['venue'] ?? ''));
-
-            // If a venue was provided, only consider entries with the same venue
-            if ($venue && strcasecmp($otherVenue, $venue) !== 0) {
-                continue;
-            }
-
-            // If time wasn't provided or entry has no parsable time, conservatively report conflict
-            if (empty($time) || empty($entry['time'])) {
-                return ['sport' => $otherSport, 'entry' => $entry];
-            }
-
-            $otherTime = trim((string)($entry['time'] ?? ''));
-            if (strcasecmp($otherTime, 'No Training') === 0 || strcasecmp($otherTime, 'Rest Day') === 0) {
-                continue;
-            }
-
-            $rangeA = self::parseTimeRange($date, $time);
-            $rangeB = self::parseTimeRange($date, $entry['time']);
-
-            if ($rangeA === null || $rangeB === null) {
-                // If we couldn't parse ranges, fall back to marking as conflict when venues match
-                return ['sport' => $otherSport, 'entry' => $entry];
-            }
-
-            if (self::timesOverlap($rangeA[0], $rangeA[1], $rangeB[0], $rangeB[1])) {
-                return ['sport' => $otherSport, 'entry' => $entry];
-            }
-        }
+        // Taekwondo and Karatedo may share the same venue on the same date.
+        // Cross-sport checks should not prevent schedule creation.
         return null;
     }
 
@@ -1010,25 +1015,39 @@ class AttendanceStore
 
         $startStr = trim($parts[0]);
         $endStr = count($parts) > 1 ? trim($parts[1]) : '';
+        $timezone = self::appTimezone();
 
-        $start = strtotime("{$date} {$startStr}");
-        $end = $endStr !== '' ? strtotime("{$date} {$endStr}") : null;
-
-        if ($start === false) {
+        try {
+            $start = Carbon::parse("{$date} {$startStr}", $timezone);
+        } catch (\Exception $e) {
             return null;
         }
 
-        if ($end === false || $end === null) {
-            // assume a default 2-hour session if end not provided or unparsable
-            $end = $start + 2 * 3600;
+        $end = null;
+        if ($endStr !== '') {
+            try {
+                $end = Carbon::parse("{$date} {$endStr}", $timezone);
+            } catch (\Exception $e) {
+                $end = null;
+            }
         }
 
-        if ($end <= $start) {
-            // assume end is next day if it's earlier than start
-            $end += 24 * 3600;
+        if ($end === null || $end->lte($start)) {
+            $end = $start->copy()->addHours(2);
         }
 
-        return [$start, $end];
+        return [$start->timestamp, $end->timestamp];
+    }
+
+    private static function hasScheduleElapsed(string $date, string $time): bool
+    {
+        $range = self::parseTimeRange($date, $time);
+        if (!$range) {
+            return false;
+        }
+
+        $now = Carbon::now(self::appTimezone())->timestamp;
+        return $now >= $range[1];
     }
 
     private static function timesOverlap(int $aStart, int $aEnd, int $bStart, int $bEnd): bool

@@ -476,15 +476,9 @@ class AdminController extends Controller
             return redirect('/login');
         }
 
-        $students = AttendanceStore::allStudents();
-        usort($students, function ($a, $b) {
-            $aLast = strtolower($a['last_name'] ?? '');
-            $bLast = strtolower($b['last_name'] ?? '');
-            if ($aLast !== $bLast) {
-                return $aLast <=> $bLast;
-            }
-            return strtolower($a['first_name'] ?? '') <=> strtolower($b['first_name'] ?? '');
-        });
+        $year = (int) $request->query('year', now()->year);
+        $month = (int) $request->query('month', now()->month);
+        $students = AttendanceStore::allStudentsStatus(null, $year, $month);
 
         $search = $request->query('search', '');
         if ($search) {
@@ -494,10 +488,17 @@ class AdminController extends Controller
             });
         }
 
+        $attendanceStartDate = AttendanceStore::systemStartDate();
+        $attendanceStartDateLabel = \Illuminate\Support\Carbon::parse($attendanceStartDate, config('app.timezone'))->format('F j, Y');
+
         return view('admin.system_settings', [
             'user' => $user,
             'students' => $students,
             'search' => $search,
+            'year' => $year,
+            'month' => $month,
+            'attendanceStartDate' => $attendanceStartDate,
+            'attendanceStartDateLabel' => $attendanceStartDateLabel,
         ]);
     }
 

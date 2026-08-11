@@ -37,6 +37,7 @@
                 <div class="field-group password-wrapper">
                     <label for="password">Password</label>
                     <input id="password" type="password" name="password" placeholder="Enter your password" required class="form-control" />
+                    <button type="button" class="button password-toggle" aria-label="Show password"><i class="bi bi-eye"></i></button>
                 </div>
                 @if ($errors->any())
                     <div class="form-error-box" style="margin-top: 12px;">

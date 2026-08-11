@@ -104,6 +104,15 @@ class AttendanceStoreTest extends TestCase
         $this->assertFileExists($this->dataPath);
     }
 
+    public function testDefaultStartDateIsTodayWhenNoEnvVarIsSet()
+    {
+        putenv('ATTENDANCE_START_DATE');
+        unset($_ENV['ATTENDANCE_START_DATE']);
+        unset($_SERVER['ATTENDANCE_START_DATE']);
+
+        $this->assertSame(now()->format('Y-m-d'), AttendanceStore::systemStartDate());
+    }
+
     public function testAutoMarksAbsentWhenStudentHasNoCheckInForTheDay()
     {
         $data = [
@@ -208,6 +217,91 @@ class AttendanceStoreTest extends TestCase
         $this->assertNotNull(AttendanceStore::getAttendanceForDate('2024001', '2026-08-08'));
         $this->assertNotNull(AttendanceStore::getAttendanceForDate('2024002', '2026-08-08'));
         $this->assertSame('present', AttendanceStore::getAttendanceForDate('2024003', '2026-08-08')['status']);
+    }
+
+    public function testMonthCountsIgnoreAttendanceBeforeSystemStartDate()
+    {
+        putenv('ATTENDANCE_START_DATE=2026-08-11');
+        $_ENV['ATTENDANCE_START_DATE'] = '2026-08-11';
+        $_SERVER['ATTENDANCE_START_DATE'] = '2026-08-11';
+
+        $data = [
+            'users' => [
+                [
+                    'id' => 'student_prestart',
+                    'student_id' => '2024020',
+                    'email' => 'student.prestart@example.com',
+                    'password' => 'secret123',
+                    'role' => 'student',
+                    'first_name' => 'Pre',
+                    'middle_name' => '',
+                    'last_name' => 'Start',
+                    'year_level' => '2',
+                    'course' => 'BSIT',
+                    'contact' => '09123456789',
+                    'sport' => 'taekwondo',
+                    'avatar' => null,
+                ],
+            ],
+            'attendance' => [
+                '2024020' => [
+                    '2026-08-09' => ['status' => 'present', 'time' => '08:00', 'note' => 'Before start', 'sport' => 'taekwondo'],
+                    '2026-08-11' => ['status' => 'present', 'time' => '08:15', 'note' => 'After start', 'sport' => 'taekwondo'],
+                ],
+            ],
+            'excuses' => [],
+            'schedules' => [],
+            'announcements' => [],
+            'special_training_requests' => [],
+        ];
+
+        AttendanceStore::save($data, false);
+
+        $counts = AttendanceStore::getMonthCounts('2024020', 2026, 8);
+        $this->assertSame(1, $counts['present']);
+        $this->assertSame(0, $counts['absent']);
+    }
+
+    public function testMonthlyCalendarSkipsDatesBeforeSystemStartDate()
+    {
+        putenv('ATTENDANCE_START_DATE=2026-08-11');
+        $_ENV['ATTENDANCE_START_DATE'] = '2026-08-11';
+        $_SERVER['ATTENDANCE_START_DATE'] = '2026-08-11';
+
+        $data = [
+            'users' => [
+                [
+                    'id' => 'student_prestart_calendar',
+                    'student_id' => '2024021',
+                    'email' => 'student.prestart.calendar@example.com',
+                    'password' => 'secret123',
+                    'role' => 'student',
+                    'first_name' => 'Calendar',
+                    'middle_name' => '',
+                    'last_name' => 'Start',
+                    'year_level' => '2',
+                    'course' => 'BSIT',
+                    'contact' => '09123456789',
+                    'sport' => 'taekwondo',
+                    'avatar' => null,
+                ],
+            ],
+            'attendance' => [
+                '2024021' => [
+                    '2026-08-09' => ['status' => 'present', 'time' => '08:00', 'note' => 'Before start', 'sport' => 'taekwondo'],
+                ],
+            ],
+            'excuses' => [],
+            'schedules' => [],
+            'announcements' => [],
+            'special_training_requests' => [],
+        ];
+
+        AttendanceStore::save($data, false);
+
+        $calendar = AttendanceStore::getMonthlyStatusCalendar('2024021', 2026, 8);
+        $this->assertNull($calendar['2026-08-09']);
+        $this->assertNotNull($calendar['2026-08-11']);
     }
 
     public function testSpecialTrainingRequestsCanBeApprovedForDateRange()
