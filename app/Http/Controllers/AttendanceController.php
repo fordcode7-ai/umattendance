@@ -268,8 +268,8 @@ class AttendanceController extends Controller
         }
 
         if ($action === 'present') {
-            $check = now()->greaterThanOrEqualTo(now()->copy()->setTime(8, 30));
-            $status = $check ? 'late' : 'present';
+            $cutoff = now()->copy()->setTime(8, 30);
+            $status = now()->lessThanOrEqualTo($cutoff) ? 'present' : 'late';
         } else {
             $status = $action;
         }

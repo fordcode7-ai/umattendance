@@ -113,6 +113,38 @@ class AttendanceStoreTest extends TestCase
         $this->assertSame(now()->format('Y-m-d'), AttendanceStore::systemStartDate());
     }
 
+    public function testFindUserByStudentIdIsTrimmedAndCaseInsensitive()
+    {
+        $data = [
+            'users' => [
+                [
+                    'id' => 'student_case',
+                    'student_id' => 'UM123456',
+                    'email' => null,
+                    'password' => 'secret123',
+                    'role' => 'student',
+                    'first_name' => 'Case',
+                    'middle_name' => '',
+                    'last_name' => 'Tester',
+                    'year_level' => '1st Year',
+                    'course' => 'BSIT',
+                    'contact' => '09171234567',
+                    'sport' => 'taekwondo',
+                    'avatar' => null,
+                ],
+            ],
+            'attendance' => [],
+            'excuses' => [],
+            'schedules' => [],
+            'announcements' => [],
+            'special_training_requests' => [],
+        ];
+
+        file_put_contents($this->dataPath, json_encode($data, JSON_PRETTY_PRINT));
+
+        $this->assertNotNull(AttendanceStore::findUserByStudentId('  um123456  '));
+    }
+
     public function testAutoMarksAbsentWhenStudentHasNoCheckInForTheDay()
     {
         $data = [

@@ -96,6 +96,7 @@ class AttendanceStore
                 && Schema::hasTable('attendance_schedules')
                 && Schema::hasTable('attendance_announcements');
         } catch (\Exception $e) {
+            self::writeLog('error', 'Database readiness check failed: ' . $e->getMessage());
             return false;
         }
     }
@@ -113,6 +114,7 @@ class AttendanceStore
                 || DB::table('attendance_schedules')->exists()
                 || DB::table('attendance_announcements')->exists();
         } catch (\Exception $e) {
+            self::writeLog('error', 'Database data check failed: ' . $e->getMessage());
             return false;
         }
     }
@@ -229,14 +231,26 @@ class AttendanceStore
             return self::$cache;
         }
 
-        if (self::databaseHasData()) {
-            $data = self::legacyDataFromDatabase();
+        $path = self::dataPath();
+        if (self::databaseReady()) {
+            if (self::databaseHasData()) {
+                $data = self::legacyDataFromDatabase();
+            } elseif (file_exists($path) && filesize($path) > 0) {
+                self::migrateLegacyJsonToDatabase();
+                $data = self::legacyDataFromDatabase();
+            } else {
+                $data = self::defaultSystemData();
+                self::$cache = $data;
+                self::$cacheLoaded = true;
+                self::save($data, false);
+                return self::$cache;
+            }
+
             self::$cache = $data;
             self::$cacheLoaded = true;
             return $data;
         }
 
-        $path = self::dataPath();
         if (!file_exists($path)) {
             $default = self::defaultSystemData();
             self::$cache = $default;
@@ -520,12 +534,20 @@ class AttendanceStore
 
     public static function findUserByStudentId(string $studentId): ?array
     {
+        $studentId = trim($studentId);
+        $normalizedId = strtolower($studentId);
         $data = self::all();
+
         foreach ($data['users'] as $user) {
-            if ($user['student_id'] === $studentId) {
+            if (empty($user['student_id'])) {
+                continue;
+            }
+
+            if (strtolower(trim($user['student_id'])) === $normalizedId) {
                 return $user;
             }
         }
+
         return null;
     }
 
@@ -652,6 +674,24 @@ class AttendanceStore
         $entryDate = Carbon::parse($date, $timezone)->startOfDay();
         $startDate = Carbon::parse(self::systemStartDate(), $timezone)->startOfDay();
         return $entryDate->lt($startDate);
+    }
+
+    protected static function attendanceDateHasEnded(string $date): bool
+    {
+        $timezone = self::appTimezone();
+        $dateEnd = Carbon::parse($date, $timezone)->endOfDay();
+        return $dateEnd->lt(Carbon::now($timezone));
+    }
+
+    protected static function hasTrainingScheduleForDate(string $sport, string $date): bool
+    {
+        $timezone = self::appTimezone();
+        $monthKey = Carbon::parse($date, $timezone)->format('Y-m');
+        $schedule = self::getSchedules($sport, $monthKey);
+        if (empty($schedule[$date])) {
+            return false;
+        }
+        return self::parseTimeRange($date, $schedule[$date]['time']) !== null;
     }
 
     public static function getMonthCounts(string $studentId, int $year, int $month): array
@@ -804,8 +844,16 @@ class AttendanceStore
             return false;
         }
 
+        if (!self::attendanceDateHasEnded($date)) {
+            return false;
+        }
+
         $dayOfWeek = Carbon::parse($date, $timezone)->dayOfWeek;
         if ($dayOfWeek === 0) {
+            return false;
+        }
+
+        if (!self::hasTrainingScheduleForDate($sport, $date)) {
             return false;
         }
 
@@ -826,6 +874,10 @@ class AttendanceStore
             return 0;
         }
 
+        if (!self::attendanceDateHasEnded($date)) {
+            return 0;
+        }
+
         $dayOfWeek = Carbon::parse($date, $timezone)->dayOfWeek;
         if ($dayOfWeek === 0) {
             return 0;
@@ -842,7 +894,7 @@ class AttendanceStore
                 continue;
             }
 
-            if (!self::getAttendanceForDate($studentId, $date)) {
+            if (!self::getAttendanceForDate($studentId, $date) && self::hasTrainingScheduleForDate($sport, $date)) {
                 self::addAttendance($studentId, $date, 'absent', '--', $sport, 'Auto-marked absent for missing check-in.');
                 $count++;
             }
